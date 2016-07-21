@@ -13,7 +13,7 @@ load.packages(required.packages=c('ggplot2','lme4','MASS','car','lsmeans','resha
 # ========================================================================================
 
 # Read in dataset exported from MS Access
-# "CapuchinForagingDataCorrected.txt" is a tab-delimited table of behavioral data with 23 columns
+# "CapuchinForagingData.txt" is a tab-delimited table of behavioral data with 23 columns
 # Each row contains information about a new state behavior
 # The following are descriptions of relevant columns
 
@@ -37,7 +37,7 @@ load.packages(required.packages=c('ggplot2','lme4','MASS','car','lsmeans','resha
 #                          later calculated for all bouts, but sometimes were done manually, in which
 #                          case they are entered here
 
-raw.data <- read.delim('data/CapuchinForagingDataCorrected.txt')
+raw.data <- read.delim('data/CapuchinForagingData.txt')
 
 # "FruitColoration.txt" is a tab-delimited table containing information about taxonomy
 # and visual characteristics of fruits
@@ -697,6 +697,70 @@ sink(file='output/model_fitting.log',append=TRUE)
 	cat('# - - - - - - - - - - - - - -  Least-square means (maturity)  - - - - - - - - - - - - - - \n')
 	cat('\n')
 	print(summary(lsmeans(ai.model,'Maturity')))
+	cat('\n')
+sink()
+
+# ========================================================================================
+# === Model fitting (dichromats only: investigation rate and acceptance index)
+# ========================================================================================
+
+# Re-run the linear mixed model only males and females
+
+# Limit to dichromats only because trichromats cannot be male
+
+# Linear mixed model with:
+# Investigation rate as dependent variable
+# Sex, maturity, and fruit species as fixed effects
+# Individual animal and phenological ID as random effects
+
+sex.model.ir <- lmer(InvestigationRate ~ Sex + Maturity + ScientificName + (1|Name) + (1|PhenologyID),data=dichromat.table)
+
+# Calculate least square means (sex)
+sex.lsmeans.ir <- summary(lsmeans(sex.model.ir,'Sex'))
+
+# Linear mixed model with:
+# Acceptance index as dependent variable
+# Sex, maturity, and fruit species as fixed effects
+# Individual animal and phenological ID as random effects
+
+sex.model.ai <- lmer(AcceptanceIndex ~ Sex + Maturity + ScientificName + (1|Name) + (1|PhenologyID),data=dichromat.table)
+
+# Calculate least square means (sex)
+sex.lsmeans.ai <- summary(lsmeans(sex.model.ai,'Sex'))
+
+# Write results to file
+sink(file='output/model_fitting.log',append=TRUE)
+	cat('# ----------------------------------------------------------------------------------------\n')
+	cat('# --- Sex model (dichromats only): investigation rate\n')
+	cat('# ----------------------------------------------------------------------------------------\n')
+	cat('\n')
+#	cat('# - - - - - - - - - - - - - - - - - - - - Summary - - - - - - - - - - - - - - - - - - - - \n')
+#	cat('\n')
+#	print(summary(sex.model.ir))
+#	cat('\n')
+	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
+	cat('\n')
+	print(Anova(sex.model.ir))
+	cat('\n')
+	cat('# - - - - - - - - - - - - - - - - Least-square means (sex)  - - - - - - - - - - - - - - - \n')
+	cat('\n')
+	print(sex.lsmeans.ir)
+	cat('\n')
+	cat('# ----------------------------------------------------------------------------------------\n')
+	cat('# --- Sex model (dichromats only): acceptance index\n')
+	cat('# ----------------------------------------------------------------------------------------\n')
+	cat('\n')
+#	cat('# - - - - - - - - - - - - - - - - - - - - Summary - - - - - - - - - - - - - - - - - - - - \n')
+#	cat('\n')
+#	print(summary(sex.model.ai))
+#	cat('\n')
+	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
+	cat('\n')
+	print(Anova(sex.model.ai))
+	cat('\n')
+	cat('# - - - - - - - - - - - - - - - - Least-square means (sex)  - - - - - - - - - - - - - - - \n')
+	cat('\n')
+	print(sex.lsmeans.ai)
 	cat('\n')
 sink()
 

@@ -10,9 +10,9 @@ All code consists of a single script:
 
 * capuchin.R
 
-The scripts requires two input files containing data from the Santa Rosa Capuchin Project's database. These files are located in:
+The script requires two input files containing data from the Santa Rosa Capuchin Project's database. These files are located in:
 
-* data/CapuchinForagingDataCorrected.txt
+* data/CapuchinForagingData.txt
 
 	A table with rows consisting of feeding events and associated metadata on the behavioral state, the feeding bout, the animal subject, and the feeding patch (including its phenological conditions).
 
