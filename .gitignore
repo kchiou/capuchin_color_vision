@@ -1,2 +1,4 @@
 # Ignore the following files
 Rplots.pdf
+.Rapp.history
+.Rhistory

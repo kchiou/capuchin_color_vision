@@ -4,13 +4,13 @@ This repository contains all analysis code used for the capuchin color vision pr
 
 The manuscript is titled:
 
-**Color vision affects rates of fruit consumption in wild white-faced capuchin monkeys (*Cebus capucinus imitator*), especially among juveniles**
+**Trichromacy increases fruit feeding rates of wild capuchins (*Cebus capucinus imitator*)**
 
 All code consists of a single script:
 
 * capuchin.R
 
-The script requires two input files containing data from the Santa Rosa Capuchin Project's database. These files are located in:
+The script requires four input files containing data from the Santa Rosa Capuchin Project's database. These files are located in:
 
 * data/CapuchinForagingData.txt
 
@@ -20,6 +20,14 @@ The script requires two input files containing data from the Santa Rosa Capuchin
 
 	A table with rows consisting of fruit resources utilized by Santa Rosa capuchin monkeys and associated taxonomic and color metadata.
 
+* data/2007_2008Dominance.xlsx
+
+	An Excel spreadsheet with date, group, individualID, and ordinal dominance rank information
+
+* data/energy.txt
+
+	Energetic information about fruits involved in this study
+
 For questions regarding the data, contact [Amanda Melin](mailto:amanda.melin@ucalgary.ca).
 
-For questions regarding the code, contact [Kenny Chiou](mailto:kenneth.chiou@wustl.edu).
+For questions regarding the code, contact [Kenny Chiou](mailto:kchiou@uw.edu).
