@@ -4,7 +4,7 @@ This repository contains all analysis code used for the capuchin color vision pr
 
 The manuscript is titled:
 
-**Trichromacy increases fruit feeding rates of wild capuchins (*Cebus capucinus imitator*)**
+**Trichromacy increases fruit intake rates of wild capuchins (*Cebus capucinus imitator*)**
 
 All code consists of a single script:
 
@@ -24,9 +24,13 @@ The script requires four input files containing data from the Santa Rosa Capuchi
 
 	An Excel spreadsheet with date, group, individualID, and ordinal dominance rank information
 
+* data/FPVDetailwithVirtualCBH_Duration(Min)_May30_2017.xlsx
+
+	An Excel spreadsheet with phenological information, mostly importantly a ripe fruit score (SimpleRipeFruitScore) and a SeasonID, the latter of which has values corresponding to the PhenologyID in other datasets.
+
 * data/energy.txt
 
-	Energetic information about fruits involved in this study
+	Energetic information about fruits involved in this study. The most important columns are the Conspicuity, Diameter, DryEnergy, and FinalEnergyRate.
 
 For questions regarding the data, contact [Amanda Melin](mailto:amanda.melin@ucalgary.ca).
 

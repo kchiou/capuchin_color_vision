@@ -64,6 +64,10 @@ conspicuous = structure(c(1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1,
 
 dom.rank = read.xls('data/2007_2008Dominance.xlsx',stringsAsFactors=FALSE)
 
+# Import phenological condition information
+
+phenology.info = read.xls('data/FPVDetailwithVirtualCBH_Duration(Min)_May30_2017.xlsx',sheet=2)
+
 # ========================================================================================
 # === Define functions
 # ========================================================================================
@@ -533,6 +537,32 @@ levels(analysis.table$Maturity)[levels(analysis.table$Maturity)=='SmallImmature'
 analysis.table$Maturity = factor(analysis.table$Maturity,levels=c('Mature','Large Immature','Small Immature'))
 analysis.table = droplevels(analysis.table)
 
+# Merge phenological condition information
+phenology.scores = phenology.info[,c('SeasonID','SimpleRipeFruitScore')]
+names(phenology.scores)[names(phenology.scores) == 'SeasonID'] = 'PhenologyID'
+phenology.scores$PhenologyID = toupper(phenology.scores$PhenologyID)
+phenology.scores = phenology.scores[complete.cases(phenology.scores),]
+
+# Merge phenology scores into dataset
+analysis.table = merge(analysis.table,phenology.scores,by='PhenologyID',all.x=TRUE)
+
+# Reorder dataset
+analysis.table = analysis.table[order(analysis.table$BoutID,analysis.table$SubBoutID),]
+
+# Convert SimpleRipeFruitScore to ordinal data
+analysis.table$SimpleRipeFruitScore = ordered(analysis.table$SimpleRipeFruitScore)
+
+# Preferred ordering of columns
+column.order = c("BoutID", "SubBoutID", "BoutBegin", "SubBoutBegin", 
+"BoutDuration", "BoutDurationOriginal", "Name", "CurrentGroup", 
+"AgeClass", "Maturity", "Sex", "Rank", "RankClass", "ColorVisionType", 
+"PhenologyID", "ScientificName", "SpeciesCode", "Conspicuity", 
+"SimpleRipeFruitScore", "NumberEaten", "NumberRejected", "RateEaten", 
+"RateRejected", "InvestigationRate", "AcceptanceIndex")
+
+analysis.table = analysis.table[,column.order]
+
+
 # Save the dataset if necessary
 # write.table(analysis.table,file="analysis_table.txt",sep='\t',row.names=FALSE,quote=FALSE)
 
@@ -747,20 +777,28 @@ dev.off()
 analysis.table = droplevels(analysis.table)
 
 # - - - - - Main model - - - - - #
-full.model.no.rank = lmer(log(RateEaten) ~ Maturity * ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=analysis.table)
+full.model.no.rank = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=analysis.table)
 
 # - - - - - Mature-only model - - - - - #
-mature.model.no.rank = lmer(log(RateEaten) ~ ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature')))
+mature.model.no.rank = lmer(log(RateEaten) ~ ColorVisionType + Conspicuity + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature')))
 
 # - - - - - Rank model - - - - - #
-mature.model.with.rank = lmer(log(RateEaten) ~ ColorVisionType * Conspicuity * RankClass + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature')))
+mature.model.with.rank = lmer(log(RateEaten) ~ ColorVisionType + Conspicuity + RankClass + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:RankClass + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature')))
 
 # - - - - - Maturity model (immatures only) - - - - - #
-immature.model.with.maturity  = lmer(log(RateEaten) ~ Maturity * ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (1|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature')))
-sex.model  = lmer(log(RateEaten) ~ Maturity * Sex + Conspicuity + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat'))
-mature.female.model.with.rank = lmer(log(RateEaten) ~ ColorVisionType * Conspicuity * RankClass + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature' & Sex %in% 'Female')))
-mature.male.model.with.rank = lmer(log(RateEaten) ~ Conspicuity * RankClass + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature' & Sex %in% 'Male')))
-female.model.no.rank = lmer(log(RateEaten) ~ Maturity * ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=subset(analysis.table,Sex %in% 'Female'))
+immature.model.with.maturity = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (1|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature')))
+
+# - - - - - Sex model (to test for effect of sex) - - - - - #
+sex.model  = lmer(log(RateEaten) ~ Maturity + Sex + Conspicuity + SimpleRipeFruitScore + Maturity:Sex + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat'))
+
+# - - - - - Rank model (mature females only) - - - - - #
+mature.female.model.with.rank = lmer(log(RateEaten) ~ ColorVisionType + Conspicuity + RankClass + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:RankClass + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature' & Sex %in% 'Female')))
+
+# - - - - - Rank model (mature males only) - - - - - #
+mature.male.model.with.rank = lmer(log(RateEaten) ~ Conspicuity + RankClass + SimpleRipeFruitScore + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature' & Sex %in% 'Male')))
+
+# - - - - - Female-only model - - - - - #
+female.model.no.rank = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=subset(analysis.table,Sex %in% 'Female'))
 
 # Because these names are getting long and out of hand, use the following shorthand codes for major models
 # fm : full.model.no.rank
@@ -768,33 +806,31 @@ female.model.no.rank = lmer(log(RateEaten) ~ Maturity * ColorVisionType * Conspi
 # im : immature.model.with.maturity
 # sm : sex.model
 
-# Give aliases using these shorthand names
-f.m = full.model.no.rank
-r.m = mature.model.with.rank
-i.m = immature.model.with.maturity
-s.m = sex.model
+# Calculate least-square means (variable names use shorthand prefixes, "ls" for least-square means, and addition suffixes to indicate test terms)
+fm.ls.mat.cvt = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity:ColorVisionType'))
+im.ls.mat.cvt = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature' & Conspicuity %in% 'conspicuous'))),'Maturity:ColorVisionType')
+sm.ls.sex = lsmeansLT(lmer(log(RateEaten) ~ Maturity + Sex + Conspicuity + SimpleRipeFruitScore + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
+rm.ls.cvt = lsmeansLT(lmer(log(RateEaten) ~ ColorVisionType + Conspicuity + RankClass + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:RankClass + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature'))),'ColorVisionType')
 
-# Calculate least-square means (variable names use shorthand prefixes and "ls" suffix)
-fm.ls = lsmeansLT(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity:ColorVisionType'))
-#rm.ls = lsmeansLT(lmer(log(RateEaten) ~ ColorVisionType * RankClass + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous' & Maturity %in% 'Mature'))),c('ColorVisionType:RankClass'))
-im.ls = lsmeansLT(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature' & Conspicuity %in% 'conspicuous'))),'Maturity:ColorVisionType')
-sm.ls = lsmeansLT(lmer(log(RateEaten) ~ Maturity + Sex + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
+# Main model (least square means)
+# Comparing mature and immature classes
+fm.ls.mat = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity'))
+fm.ls.cvt = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('ColorVisionType'))
 
 # Calculate differences of least-square means (variable names use shorthand prefixes and "dm" suffix)
-fm.dm = difflsmeans(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity:ColorVisionType'))
-#rm.dm = difflsmeans(lmer(log(RateEaten) ~ ColorVisionType * RankClass + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous' & Maturity %in% 'Mature'))),c('ColorVisionType:RankClass'))
-im.dm = difflsmeans(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName)  + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature' & Conspicuity %in% 'conspicuous'))),'Maturity:ColorVisionType')
-sm.dm = difflsmeans(lmer(log(RateEaten) ~ Maturity + Sex  + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
+fm.dm.mat.cvt = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity:ColorVisionType'))
+fm.dm.mat = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity'))
+fm.dm.cvt = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('ColorVisionType'))
 
-# Redo models above with Conspicuity as interaction term when allowed (some models will throw an error)
 
-fm.ls = lsmeansLT(lmer(log(RateEaten) ~ Maturity * ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,TRUE))),c('Maturity:ColorVisionType:Conspicuity'))
-#rm.ls = lsmeansLT(lmer(log(RateEaten) ~ ColorVisionType * RankClass * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature'))),c('ColorVisionType:RankClass:Conspicuity'))
-sm.ls = lsmeansLT(lmer(log(RateEaten) ~ Maturity + Sex + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
+im.dm.mat.cvt = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,!Maturity %in% 'Mature' & Conspicuity %in% 'conspicuous'))),'Maturity:ColorVisionType')
+sm.dm.sex = difflsmeans(lmer(log(RateEaten) ~ Maturity + Sex + Conspicuity + SimpleRipeFruitScore + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
 
-fm.dm = difflsmeans(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity:ColorVisionType'))
-# rm.dm = difflsmeans(lmer(log(RateEaten) ~ ColorVisionType * RankClass + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous' & Maturity %in% 'Mature'))),c('ColorVisionType:RankClass'))
-sm.dm = difflsmeans(lmer(log(RateEaten) ~ Maturity + Sex  + (1|Name) + (1|ScientificName) + (1|PhenologyID),data=subset(analysis.table,ColorVisionType %in% 'Dichromat')),'Sex')
+# Redo main model with Conspicuity as interaction term when allowed
+fm.ls.cvt.con = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,TRUE))),c('ColorVisionType:Conspicuity'))
+
+fm.dm.cvt.con = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,TRUE))),c('ColorVisionType:Conspicuity'))
+
 
 # Do a quality check on the full model (e.g., check for homoscedasticity)
 pdf(file='output/qualitycheck.pdf',width=6,height=6,useDingbats=FALSE)
@@ -820,9 +856,6 @@ dev.off()
 
 # Post-hoc analysis
 
-# Main model
-main.diffmeans = difflsmeans(lmer(log(RateEaten) ~ Maturity + ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,TRUE))),c('ColorVisionType:Conspicuity'))$diffs.lsmeans.table
-
 # Planned post-hoc comparisons (dichromats vs. trichromats for each conspicuity level)
 i = c(
 	"ColorVisionType:Conspicuity  Dichromat conspicuous -  Trichromat conspicuous",
@@ -830,10 +863,11 @@ i = c(
 	"ColorVisionType:Conspicuity  Dichromat dark -  Trichromat dark" 
 )
 
-main.diffmeans.subset = main.diffmeans[i,]
+main.diffmeans.subset = fm.dm.cvt.con$diffs.lsmeans.table[i,]
 
 # Adjust p-values for multiple comparisons
 main.diffmeans.subset$holm = p.adjust(main.diffmeans.subset$`p-value`,'holm')
+main.diffmeans.subset$bonferroni = p.adjust(main.diffmeans.subset$`p-value`,'bonferroni')
 
 # ========================================================================================
 # === Model reporting
@@ -847,15 +881,15 @@ sink(file='output/model_fitting.log')
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(Anova(f.m))
+	print(Anova(full.model.no.rank))
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - -  Least-square means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(fm.ls)
+	print(fm.ls.cvt.con)
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - Difference of means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(fm.dm)
+	print(fm.dm.cvt.con)
 	cat('\n')
 
 	cat('# ----------------------------------------------------------------------------------------\n')
@@ -864,7 +898,7 @@ sink(file='output/model_fitting.log')
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(Anova(r.m))
+	print(Anova(mature.model.with.rank))
 	cat('\n')
 
 	cat('# ----------------------------------------------------------------------------------------\n')
@@ -873,15 +907,15 @@ sink(file='output/model_fitting.log')
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(Anova(i.m))
+	print(Anova(immature.model.with.maturity))
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - -  Least-square means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(im.ls)
+	print(im.ls.mat.cvt)
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - Difference of means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(im.dm)
+	print(im.dm.mat.cvt)
 	cat('\n')
 
 	cat('# ----------------------------------------------------------------------------------------\n')
@@ -890,15 +924,15 @@ sink(file='output/model_fitting.log')
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - -  ANOVA results  - - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(Anova(s.m))
+	print(Anova(sex.model))
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - -  Least-square means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(sm.ls)
+	print(sm.ls.sex)
 	cat('\n')
 	cat('# - - - - - - - - - - - - - - - - - Difference of means - - - - - - - - - - - - - - - - - \n')
 	cat('\n')
-	print(sm.dm)
+	print(sm.dm.sex)
 	cat('\n')
 sink()
 
@@ -909,10 +943,10 @@ sink()
 # Run the following models for figure plotting
 
 # Least-square means for the three maturity classes (conspicuous fruits only)
-maturity.lsmeans = lsmeansLT(lmer(log(RateEaten) ~ Maturity * ColorVisionType + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Conspicuity %in% 'conspicuous'))),c('Maturity'))$lsmeans.table
+maturity.lsmeans = fm.ls.mat$lsmeans.table
 
 # Least-square means for the two color vision types (full dataset)
-di.tri.lsmeans = lsmeansLT(lmer(log(RateEaten) ~ Maturity + ColorVisionType * Conspicuity + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,TRUE))),c('ColorVisionType:Conspicuity'))$lsmeans.table
+di.tri.lsmeans = fm.ls.cvt.con$lsmeans.table
 
 
 # Order plant species by feeding rate
@@ -969,9 +1003,10 @@ p = ggplot(maturity.lsmeans,aes(Maturity,LogEstimate,color=Maturity)) +
 #	geom_errorbar(aes(ymin=lsmean-SE,ymax=lsmean+SE),width=0.5,size=0.5) + 
 	geom_errorbar(aes(ymin=LowerSE,ymax=UpperSE),width=0.5,size=0.5) + 
 	geom_errorbar(aes(ymin=LowerCI,ymax=UpperCI),width=0.5,size=0.2,linetype=3) + 
-	xlab('Age Class') + ylab('log(Feeding Rate)') + 
+	xlab('Age Class') + ylab('log(Intake Rate) (fruits/min)') + 
 	theme(legend.position='none') + 
-	scale_color_manual(values=c('#000000','#000000','#000000'))
+	scale_color_manual(values=c('#000000','#000000','#000000')) +
+	scale_x_discrete(labels=c('Mature','Large\nImmature','Small\nImmature'))
 ggsave(p,filename='output/fig_lsmeans_maturity.pdf',width=2.4,height=2.4,useDingbats=FALSE)
 
 p = ggplot(di.tri.lsmeans,aes(ColorVisionType,LogEstimate,color=ColorVisionType)) + 
@@ -980,12 +1015,12 @@ p = ggplot(di.tri.lsmeans,aes(ColorVisionType,LogEstimate,color=ColorVisionType)
 	geom_errorbar(aes(ymin=LowerCI,ymax=UpperCI),width=0.5,size=0.2,linetype=3) + 
 	ylim(c(min(di.tri.lsmeans$LowerCI),max(di.tri.lsmeans$UpperCI)+0.02)) +
 	facet_wrap(~Conspicuity,nrow=1) +
-	ylab('log(Feeding Rate)') + 
+	ylab('log(Intake Rate) (fruits/min)') + 
 	theme(legend.position='bottom',
 		axis.title.x=element_blank(),
 		axis.text.x=element_blank(),
 		axis.ticks.x=element_blank()) +
-	scale_color_manual(name='Color vision type',values=c('#7fbf7b','#af8dc3'))
+	scale_color_manual(name='Color Vision Type',values=c('#7fbf7b','#af8dc3'))
 ggsave(p,filename='output/fig_lsmeans_colorvision_conspicuity.pdf',width=3.0,height=2.4,useDingbats=FALSE)
 
 # Create clone of analysis.table with reordered plant species
@@ -1002,7 +1037,7 @@ p = ggplot() +
 	coord_cartesian(ylim=c(0,1)) +
 	theme(axis.text.x=element_text(angle=-90,hjust=0,vjust=0.5,face='italic'),panel.grid=element_blank()) +
 	xlab('Plant Species') +
-	ylab('Feeding Rate')
+	ylab('Intake Rate (fruits/min)')
 ggsave(p,filename='output/fig_feeding.rate.by.fruit.species.pdf',width=7,height=4)
 
 # ========================================================================================
