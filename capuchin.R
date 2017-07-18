@@ -1079,7 +1079,36 @@ plant.order = c("Sciadodendron excelsum", "Cordia guanacastensis", "Cordia panam
 bout.summary = bout.summary[match(plant.order,bout.summary$species),]
 
 # Write info to file
-write.csv(bout.summary,file='output/bout_summary.csv')
+write.csv(bout.summary,file='output/bout_summary.csv', row.names=FALSE)
+
+# Save trimmed down dataset (unnecessary columns removed)
+save.columns = c(
+	'BoutID',
+	'BoutBegin',
+	'BoutDuration',
+	'Name',
+	'CurrentGroup',
+	'AgeClass',
+	'Maturity',
+	'Sex',
+	'Rank',
+	'RankClass',
+	'ColorVisionType',
+	'PhenologyID',
+	'ScientificName',
+	'SpeciesCode',
+	'Conspicuity',
+	'SimpleRipeFruitScore',
+	'NumberEaten',
+	'NumberRejected',
+	'RateEaten',
+	'RateRejected',
+	'InvestigationRate',
+	'AcceptanceIndex'
+)
+
+save.dataset = analysis.table[save.columns]
+write.csv(save.dataset,file='output/bout_info.csv', row.names=FALSE)
 
 # ========================================================================================
 # === Coda
