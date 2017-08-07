@@ -27,7 +27,7 @@ load.packages(required.packages=c('ggplot2','lme4','MASS','car','lsmeans','lmerT
 # Behavior               : observed state behavior
 # Event                  : concatenated single-letter codes of foraging events that took
 #                          place within the state
-# PhenologyID            : phenological identifier for a foraging patch
+# PhenologyID            : identifier for a particular tree under the phenological conditions in which animals were foraging in it (we call this a food patch ID in the text)
 # ScientificName         : binomial Latin name of the plant species
 # BoutBegin              : timestamp of the start time of a feeding bout
 # BoutDuration           : duration of a feeding bout
@@ -486,7 +486,7 @@ analysis.table = merge(analysis.table,dom.rank.merge,by=c('Name','PeriodID'),all
 
 # There are some missing or inconsistent ranks following the merge. Sort out these few cases manually
 
-# DECISION D6: Buzz's rank is always low, Lavendar and Mrs W should always be low, Albus always mid
+# DECISION D7: Buzz's rank is always low, Lavendar and Mrs W should always be low, Albus always mid
 analysis.table$RankClass[analysis.table$Name %in% c('Buzz','Lavender','MrsWeasley')] = 'low'
 analysis.table$RankClass[analysis.table$Name %in% c('AlbusDumbledore')] = 'medium'
 
@@ -776,8 +776,19 @@ dev.off()
 # Drop extraneous factor levels prior to model-building
 analysis.table = droplevels(analysis.table)
 
+# - - - - - - - - - - - - - Note - - - - - - - - - - - - - #
+#
+# Random effect variables ScientificName and PhenologyID are hierarchically nested
+# (all values sharing a PhenologyID must also share a ScientificName but not vice versa)
+#
+# Note that the following line:
+# 	(ColorVisionType|Name) + (ColorVisionType|ScientificName/PhenologyID)
+# gives equivalent results to:
+#   (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID)
+
 # - - - - - Main model - - - - - #
-full.model.no.rank = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=analysis.table)
+#full.model.no.rank = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=analysis.table)
+full.model.no.rank = lmer(log(RateEaten) ~ Maturity + ColorVisionType + Conspicuity + SimpleRipeFruitScore + Maturity:ColorVisionType + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName/PhenologyID),data=analysis.table)
 
 # - - - - - Mature-only model - - - - - #
 mature.model.no.rank = lmer(log(RateEaten) ~ ColorVisionType + Conspicuity + SimpleRipeFruitScore + ColorVisionType:Conspicuity + ColorVisionType:SimpleRipeFruitScore + (ColorVisionType|Name) + (ColorVisionType|ScientificName) + (ColorVisionType|PhenologyID),data=droplevels(subset(analysis.table,Maturity %in% 'Mature')))
